@@ -110,12 +110,44 @@ class InferenceModel():
         print("Saved current model.")
 
 
-    def predict(self, team_input_dicts, enemy_input_dicts):
-        team_inputs = get_inputs(team_input_dicts)
-        enemy_inputs = get_inputs(enemy_input_dicts)
-        outputs = self.model(team_inputs, enemy_inputs, self.config["test_mp_iterations"])
-        output = gn.utils_np.graphs_tuple_to_data_dicts(outputs[-1])
-        return [dict["globals"][0] for dict in output], [o["nodes"] for o in output]
+    #evaluations are cached
+    #if a prediction for a reoccuring state is requested, time can be safed by just returning the cached values
+    def predict(self, team_input_dicts, enemy_input_dicts, state_hashes, read_cache, write_cache):
+        is_cached = []
+        ti_to_eval = []
+        ei_to_eval = []
+        for ti, ei, h in zip(team_input_dicts, enemy_input_dicts, state_hashes):
+            is_cached.append(h in read_cache)
+            if not is_cached[-1]:
+                ti_to_eval.append(ti)
+                ei_to_eval.append(ei)
+        output = []
+        if len(ti_to_eval) > 0:
+            team_inputs = get_inputs(ti_to_eval)
+            enemy_inputs = get_inputs(ei_to_eval)
+            outputs = self.model(team_inputs, enemy_inputs, self.config["test_mp_iterations"])
+            output = gn.utils_np.graphs_tuple_to_data_dicts(outputs[-1])
+        v = []
+        p = []
+        for c,h in zip(is_cached, state_hashes):
+            if c:
+                cv, cp = read_cache[h]
+                v.append(cv)
+                p.append(cp)
+            else:
+                dict = output.pop(0)
+                v.append(dict["globals"][0])
+                p.append(dict["nodes"])
+                write_cache[h] = (v[-1], p[-1])
+        return v,p
+
+    # def predict(self, team_input_dicts, enemy_input_dicts, state_hashes):
+    #
+    #     team_inputs = get_inputs(team_input_dicts)
+    #     enemy_inputs = get_inputs(enemy_input_dicts)
+    #     outputs = self.model(team_inputs, enemy_inputs, self.config["test_mp_iterations"])
+    #     output = gn.utils_np.graphs_tuple_to_data_dicts(outputs[-1])
+    #     return [dict["globals"][0] for dict in output], [dict["nodes"] for dict in output]
 
 
 

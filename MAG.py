@@ -86,6 +86,10 @@ class MAGActor(scene.Actor):
         return np.array([self.is_alive]*(num_action-1)+[1], dtype=np.float32)
 
 
+    def to_hash(self):
+        return self.px*map_y + self.py
+
+
 
 goals = np.array([[2,2,1], [4,1,1]])
 

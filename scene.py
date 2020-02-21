@@ -34,6 +34,11 @@ class Actor(abc.ABC):
     def alive(self):
         return self.fitness() > 0
 
+    @abc.abstractmethod
+    def to_hash(self):
+        pass
+
+
     #returns a copy of the actor
     @abc.abstractmethod
     def clone(self):
@@ -130,6 +135,15 @@ class Scene(abc.ABC):
                 "senders": [],
                 "receivers": [],
                 "edges": []}
+
+
+    def to_hash(self, i, team_leave_out = None, enemy_leave_out = None):
+        team, enemies = self.get_team_and_enemies(i)
+        # team_hash = b"".join([a.get_state().tostring() for j,a in enumerate(team) if a.alive() and not j == team_leave_out])
+        # enemy_hash = b"".join([a.get_state().tostring() for j,a in enumerate(enemies) if a.alive() and not j == enemy_leave_out])
+        team_hash = tuple(a.to_hash() for j,a in enumerate(team) if a.alive() and not j == team_leave_out)
+        enemy_hash = tuple(a.to_hash() for j,a in enumerate(enemies) if a.alive() and not j == enemy_leave_out)
+        return (team_hash, enemy_hash)
 
 
     def terminal(self):

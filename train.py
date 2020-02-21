@@ -19,7 +19,7 @@ def start(scene_gen):
 
     ray.init()
 
-    replay_buffer = tree_search.ReplayBuffer(config)
+    replay_buffer = tree_search.ReplayBuffer(config) #stores generated scenes
 
     def make_train_model():
         import model
@@ -30,31 +30,55 @@ def start(scene_gen):
     @ray.remote
     class Sampler(object):
         def __init__(self):
-            example = scene_gen()
-            example.save_policy(np.zeros((len(example.actor_history[-1]), config["num_actions"]))) #save dummy policy to make dummy target
             self.predictor = make_inference_model()
+            self.running = False
 
-        def sample_once(self):
-            scenes = []
-            for _ in range(config["num_trajectories_per_thread"]):
-                scene = scene_gen()
-                tree_search.unroll_trajectory(scene, config, self.predictor)
-                scenes.append(scene)
-            return scenes
+        def sample_once(self, read_cache):
+            write_cache = {}
+            if not self.running:
+                self.scene = scene_gen()
+                self.running = True
+            i = config["sync_batch"]
+            while i > 0 and self.running:
+                self.running = tree_search.trajectory_step(self.scene, config, self.predictor, read_cache, write_cache)
+                i -= 1
+            return (write_cache, self.running)
 
         def load_model(self):
             self.predictor.load_latest()
 
+        def get_scene(self):
+            return self.scene
+
     # Create actors
     samplers = [Sampler.remote() for _ in range(config["threads"])]
 
-    print("sampling random trajectories before training starts...")
-    if load_latest:
-        for s in samplers:
-            s.load_model.remote()
-    for scenes in ray.get([s.sample_once.remote() for s in samplers]):
-        for s in scenes:
-            replay_buffer.add(s)
+    def sampling(load = True):
+        print("sampling random trajectories using latest model...")
+        #during a sampling run with fixed network parameters, evaluations are cached and reused
+        #for efficiency
+        inference_cache = {}
+
+        if load:
+            for s in samplers:
+                s.load_model.remote()
+
+        sampling = [sampler.sample_once.remote(inference_cache) for sampler in samplers]
+        num_ready = 0
+        while num_ready < config["num_trajectories"]:
+            ready,_ = ray.wait(sampling)
+            for num, id in enumerate(sampling):
+                if id == ready[0]:
+                    break
+            __cache, running = ray.get(ready[0])
+            inference_cache.update(__cache) #store new cached inferences
+            if not running:
+                replay_buffer.add(ray.get(samplers[num].get_scene.remote()))
+                num_ready += 1
+                print(num_ready)
+            sampling[num] = samplers[num].sample_once.remote(inference_cache)
+
+    sampling(load_latest)
 
     predictor = make_train_model()
 
@@ -67,12 +91,7 @@ def start(scene_gen):
             losses.append(loss.numpy())
             print("epoch ", epoch, "it ", i, " loss=", losses[-1], " av100=", sum(losses[-100:])/min(100, len(losses)), " ce=", ce, " mse=", mse)
         predictor.save()
-        print("Start resampling...")
-        for s in samplers:
-            s.load_model.remote()
-        for scenes in ray.get([s.sample_once.remote() for s in samplers]):
-            for s in scenes:
-                replay_buffer.add(s)
+        sampling()
 
 
 
