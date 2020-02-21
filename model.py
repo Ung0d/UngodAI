@@ -112,12 +112,12 @@ class InferenceModel():
 
     #evaluations are cached
     #if a prediction for a reoccuring state is requested, time can be safed by just returning the cached values
-    def predict(self, team_input_dicts, enemy_input_dicts, state_hashes, read_cache, write_cache):
+    def predict(self, team_input_dicts, enemy_input_dicts, state_hashes, cache):
         is_cached = []
         ti_to_eval = []
         ei_to_eval = []
         for ti, ei, h in zip(team_input_dicts, enemy_input_dicts, state_hashes):
-            is_cached.append(h in read_cache)
+            is_cached.append(h in cache)
             if not is_cached[-1]:
                 ti_to_eval.append(ti)
                 ei_to_eval.append(ei)
@@ -131,14 +131,14 @@ class InferenceModel():
         p = []
         for c,h in zip(is_cached, state_hashes):
             if c:
-                cv, cp = read_cache[h]
+                cv, cp = cache[h]
                 v.append(cv)
                 p.append(cp)
             else:
                 dict = output.pop(0)
                 v.append(dict["globals"][0])
                 p.append(dict["nodes"])
-                write_cache[h] = (v[-1], p[-1])
+                cache[h] = (v[-1], p[-1])
         return v,p
 
     # def predict(self, team_input_dicts, enemy_input_dicts, state_hashes):

@@ -33,16 +33,15 @@ def start(scene_gen):
             self.predictor = make_inference_model()
             self.running = False
 
-        def sample_once(self, read_cache):
-            write_cache = {}
+        def sample_once(self, cache):
             if not self.running:
                 self.scene = scene_gen()
                 self.running = True
             i = config["sync_batch"]
             while i > 0 and self.running:
-                self.running = tree_search.trajectory_step(self.scene, config, self.predictor, read_cache, write_cache)
+                self.running = tree_search.trajectory_step(self.scene, config, self.predictor, cache)
                 i -= 1
-            return (write_cache, self.running)
+            return (cache, self.running)
 
         def load_model(self):
             self.predictor.load_latest()

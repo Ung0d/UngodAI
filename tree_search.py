@@ -53,13 +53,13 @@ def ucb_score(config, parent, child):
 
 #simultaneously returns an action for the player and for each enemy, based on
 #a monte carlo tree search run
-def monte_carlo_search(config, scene, predictor, read_cache, write_cache):
+def monte_carlo_search(config, scene, predictor, cache):
 
     #initialize search by creating roots and expanding them (+ apply exploration noise)
     team1, team2 = scene.get_team_and_enemies(-1)
     roots1 = [Node() for actor in team1]
     roots2 = [Node() for actor in team2]
-    evaluate_and_expand(config, scene, roots1, predictor, read_cache, write_cache, apply_noise=True)
+    evaluate_and_expand(config, scene, roots1, predictor, cache, apply_noise=True)
     #iteratively and simultaneously construct search trees for team and enemies
     for i in range(config["tree_simulations"]):
         scene_local = scene.clone()
@@ -87,7 +87,7 @@ def monte_carlo_search(config, scene, predictor, read_cache, write_cache):
         #simi = time.process_time()
         #evaluate all leafs
         eval_paths = search_paths1+search_paths2 if turn else search_paths2+search_paths1
-        diff_values = evaluate_and_expand(config, scene_local, [path[-1] for path in eval_paths], predictor, read_cache, write_cache, apply_noise=False)
+        diff_values = evaluate_and_expand(config, scene_local, [path[-1] for path in eval_paths], predictor, cache, apply_noise=False)
         backpropagate(eval_paths, diff_values)
         #print("sim2:", time.process_time() - simi)
     policies = np.concatenate([make_policy(root, config["num_actions"]) for root in roots1 if not root.is_leaf()], axis=0)
@@ -122,7 +122,7 @@ def get_actions(config, scene, policies):
 
 #evalutes the predictor and expands both all team and enemy trees
 #additionally applies noise
-def evaluate_and_expand(config, scene, nodes, predictor, read_cache, write_cache, apply_noise):
+def evaluate_and_expand(config, scene, nodes, predictor, cache, apply_noise):
     team_actors, enemy_actors = scene.get_team_and_enemies(-1)
     if not scene.terminal():
         num_team_alive, num_enemy_alive = scene.get_num_alive(-1)
@@ -134,7 +134,7 @@ def evaluate_and_expand(config, scene, nodes, predictor, read_cache, write_cache
         enemy_hashes = [scene.to_hash(-1, enemy_leave_out=id)[0] for id,actor in enumerate(enemy_actors) if actor.alive()] if num_enemy_alive > 1 else []
         values, logits = predictor.predict([team_dict]+team_one_out_dicts+[team_dict]*len(enemy_one_out_dicts),
                                             [enemy_dict]*(len(team_one_out_dicts)+1) + enemy_one_out_dicts,
-                                            [hash] + team_hashes + enemy_hashes, read_cache, write_cache)
+                                            [hash] + team_hashes + enemy_hashes, cache)
         if len(team_one_out_dicts) == 0:
             values.insert(1, 0)
         if len(enemy_one_out_dicts) == 0:
@@ -201,8 +201,8 @@ class ReplayBuffer:
         return team_inputs, enemy_inputs, targets
 
 
-def trajectory_step(scene, config, predictor, read_cache, write_cache):
-    actions, poli = monte_carlo_search(config, scene, predictor, read_cache, write_cache)
+def trajectory_step(scene, config, predictor, cache):
+    actions, poli = monte_carlo_search(config, scene, predictor, cache)
     scene.update(actions)
     scene.save_policy(poli)
     return not scene.terminal() and scene.get_trajectory_length() <= config["max_trajectory_length"]
