@@ -35,15 +35,18 @@ def start(scene_gen):
             self.predictor = make_inference_model(scene_gen)
             self.running = False
 
-        def sample_once(self, cache):
+        def sample_once(self):
+            #during a sampling run with fixed network parameters, evaluations are cached and reused
+            #for efficiency
+            inference_cache = {}
             if not self.running:
                 self.scene = scene_gen()
                 self.running = True
-            i = config["sync_batch"]
+            i = config["cached_batch"]
             while i > 0 and self.running:
-                self.running = tree_search.trajectory_step(self.scene, config, self.predictor, cache)
+                self.running = tree_search.trajectory_step(self.scene, config, self.predictor, inference_cache)
                 i -= 1
-            return (cache, self.running)
+            return self.running
 
         def load_model(self):
             self.predictor.load_latest()
@@ -56,28 +59,24 @@ def start(scene_gen):
 
     def sampling(load = True):
         print("sampling random trajectories using latest model...")
-        #during a sampling run with fixed network parameters, evaluations are cached and reused
-        #for efficiency
-        inference_cache = {}
 
         if load:
             for s in samplers:
                 s.load_model.remote()
 
-        sampling = [sampler.sample_once.remote(inference_cache) for sampler in samplers]
+        sampling = [sampler.sample_once.remote() for sampler in samplers]
         num_ready = 0
         while num_ready < config["num_trajectories"]:
             ready,_ = ray.wait(sampling)
             for num, id in enumerate(sampling):
                 if id == ready[0]:
                     break
-            __cache, running = ray.get(ready[0])
-            inference_cache.update(__cache) #store new cached inferences
+            running = ray.get(ready[0])
             if not running:
                 replay_buffer.add(ray.get(samplers[num].get_scene.remote()))
                 num_ready += 1
                 print(num_ready)
-            sampling[num] = samplers[num].sample_once.remote(inference_cache)
+            sampling[num] = samplers[num].sample_once.remote()
 
     sampling(load_latest)
 

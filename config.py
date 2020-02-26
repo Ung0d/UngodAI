@@ -43,5 +43,5 @@ config = {
 
     #performance
     "threads" : 8,
-    "sync_batch" : 40 #number of mcts iterations until the cache dict is syncronized with other worker processes
+    "cached_batch" : 1000 #number of mcts iterations with cached inference
 }
