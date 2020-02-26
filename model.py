@@ -104,13 +104,13 @@ class InferenceModel():
         enemy_input_example = get_inputs([enemy_input_example])
 
         # Get the input signature for that function by obtaining the specs
-        input_signature = [
+        self.input_signature = [
           gn.utils_tf.specs_from_graphs_tuple(team_input_example, dynamic_num_graphs=True),
           gn.utils_tf.specs_from_graphs_tuple(enemy_input_example, dynamic_num_graphs=True)
         ]
 
         # Compile the update function using the input signature for speedy code.
-        self.inference = tf.function(inference, input_signature=input_signature)
+        self.inference = tf.function(inference, input_signature=self.input_signature)
 
 
     def load_latest(self):
@@ -123,6 +123,16 @@ class InferenceModel():
     def save(self):
         self.checkpoint.save(self.save_prefix)
         print("Saved current model.")
+
+
+    def to_tflite(self):
+        converter = tf.lite.TFLiteConverter.from_concrete_functions([self.inference.get_concrete_function()])
+        converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS,
+                                       tf.lite.OpsSet.SELECT_TF_OPS]
+
+        tflite_model = converter.convert()
+        open("converted_model.tflite", "wb").write(tflite_model)
+
 
 
     #evaluations are cached
