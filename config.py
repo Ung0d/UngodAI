@@ -1,16 +1,16 @@
 config = {
     #model latent dimensions
-    "enemy_reducer_edge_layers" : [20]*1,
-    "enemy_reducer_node_layers" : [20]*1,
-    "enemy_reducer_global_layers" : [20]*1,
+    "enemy_reducer_edge_layers" : [50]*1,
+    "enemy_reducer_node_layers" : [50]*1,
+    "enemy_reducer_global_layers" : [50]*1,
 
-    "encode_edge_layers" : [20]*1,
-    "encode_node_layers" : [20]*1,
-    "encode_global_layers" : [20]*1,
+    "encode_edge_layers" : [50]*1,
+    "encode_node_layers" : [50]*1,
+    "encode_global_layers" : [50]*1,
 
-    "core_edge_layers" : [20]*2,
-    "core_node_layers" : [20]*2,
-    "core_global_layers" : [20]*2,
+    "core_edge_layers" : [50]*2,
+    "core_node_layers" : [50]*2,
+    "core_global_layers" : [50]*2,
 
     #reinforcement
     "num_actions" : 5,
@@ -18,9 +18,9 @@ config = {
     "max_trajectory_length" : 1000,
     "buffer_size" : 10000,
 
-    "tree_simulations" : 200,
+    "tree_simulations" : 400,
 
-    "random_moves_init" : 50,
+    "random_moves_init" : 20,
 
     "root_dirichlet_alpha" : 0.06,
     "root_exploration_fraction" : 0.25,
@@ -28,11 +28,11 @@ config = {
     "pb_c_base" : 19652,
     "pb_c_init" : 4,
 
-    "num_trajectories" : 100,
+    "num_trajectories" : 24,
 
     #message passing
-    "train_mp_iterations" : 1,
-    "test_mp_iterations" : 1,
+    "train_mp_iterations" : 2,
+    "test_mp_iterations" : 2,
 
     #training
     "learning_rate" : 1e-3,
@@ -43,5 +43,5 @@ config = {
 
     #performance
     "threads" : 8,
-    "sync_batch" : 1 #number of mcts iterations until the cache dict is syncronized with other worker processes
+    "sync_batch" : 40 #number of mcts iterations until the cache dict is syncronized with other worker processes
 }

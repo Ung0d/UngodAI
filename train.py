@@ -8,9 +8,17 @@ from config import config
 load_latest = False
 
 
-def make_inference_model():
+def make_inference_model(scene_gen):
     import model
-    return model.InferenceModel(config) #init model with dimensions from examplenroll_trajectory(scene, config, predictor, replay_buffer)
+    example = scene_gen()
+    return model.InferenceModel(config, *example.to_input_dicts(0)) #init model with dimensions from examplenroll_trajectory(scene, config, predictor, replay_buffer)
+
+
+def make_train_model(scene_gen):
+    import model
+    example = scene_gen()
+    example.save_policy(np.zeros((len(example.actor_history[-1]), config["num_actions"]))) #save dummy policy to make dummy target
+    return model.TrainableModel(config, *example.to_input_dicts(0), example.to_target_dict(0)) #init model with dimensions from examplenroll_trajectory(scene, config, predictor, replay_buffer)
 
 
 #starts the training process
@@ -21,16 +29,10 @@ def start(scene_gen):
 
     replay_buffer = tree_search.ReplayBuffer(config) #stores generated scenes
 
-    def make_train_model():
-        import model
-        example = scene_gen()
-        example.save_policy(np.zeros((len(example.actor_history[-1]), config["num_actions"]))) #save dummy policy to make dummy target
-        return model.TrainableModel(config, *example.to_input_dicts(0), example.to_target_dict(0)) #init model with dimensions from examplenroll_trajectory(scene, config, predictor, replay_buffer)
-
     @ray.remote
     class Sampler(object):
         def __init__(self):
-            self.predictor = make_inference_model()
+            self.predictor = make_inference_model(scene_gen)
             self.running = False
 
         def sample_once(self, cache):
@@ -79,7 +81,7 @@ def start(scene_gen):
 
     sampling(load_latest)
 
-    predictor = make_train_model()
+    predictor = make_train_model(scene_gen)
 
     losses = []
     for epoch in range(config["epochs"]):

@@ -89,13 +89,28 @@ def make_loss(targets_tr, outputs_tr):
 
 class InferenceModel():
 
-    def __init__(self, config):
+    def __init__(self, config, team_input_example, enemy_input_example):
         self.config = config
         self.model = ActionValuePredictor(config)
         self.checkpoint = tf.train.Checkpoint(module=self.model)
         self.checkpoint_root = "./checkpoints"
         self.checkpoint_name = "example"
         self.save_prefix = os.path.join(self.checkpoint_root, self.checkpoint_name)
+
+        def inference(team_inputs_tr, enemy_inputs_tr):
+            return self.model(team_inputs_tr, enemy_inputs_tr, config["test_mp_iterations"])
+
+        team_input_example = get_inputs([team_input_example])
+        enemy_input_example = get_inputs([enemy_input_example])
+
+        # Get the input signature for that function by obtaining the specs
+        input_signature = [
+          gn.utils_tf.specs_from_graphs_tuple(team_input_example, dynamic_num_graphs=True),
+          gn.utils_tf.specs_from_graphs_tuple(enemy_input_example, dynamic_num_graphs=True)
+        ]
+
+        # Compile the update function using the input signature for speedy code.
+        self.inference = tf.function(inference, input_signature=input_signature)
 
 
     def load_latest(self):
@@ -125,7 +140,7 @@ class InferenceModel():
         if len(ti_to_eval) > 0:
             team_inputs = get_inputs(ti_to_eval)
             enemy_inputs = get_inputs(ei_to_eval)
-            outputs = self.model(team_inputs, enemy_inputs, self.config["test_mp_iterations"])
+            outputs = self.inference(team_inputs, enemy_inputs)
             output = gn.utils_np.graphs_tuple_to_data_dicts(outputs[-1])
         v = []
         p = []
@@ -155,7 +170,7 @@ class InferenceModel():
 class TrainableModel(InferenceModel):
 
     def __init__(self, config, team_input_example, enemy_input_example, target_example):
-        super(TrainableModel, self).__init__(config)
+        super(TrainableModel, self).__init__(config, team_input_example, enemy_input_example)
         optimizer = snt.optimizers.Adam(config["learning_rate"])
 
         # Training.

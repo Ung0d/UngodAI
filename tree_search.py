@@ -84,12 +84,12 @@ def monte_carlo_search(config, scene, predictor, cache):
             turn = not turn
             search_paths_turn = search_paths1 if turn else search_paths2
         #print("sim:", time.process_time() - simi)
-        #simi = time.process_time()
+        simi = time.process_time()
         #evaluate all leafs
         eval_paths = search_paths1+search_paths2 if turn else search_paths2+search_paths1
         diff_values = evaluate_and_expand(config, scene_local, [path[-1] for path in eval_paths], predictor, cache, apply_noise=False)
         backpropagate(eval_paths, diff_values)
-        #print("sim2:", time.process_time() - simi)
+        print("sim2:", time.process_time() - simi)
     policies = np.concatenate([make_policy(root, config["num_actions"]) for root in roots1 if not root.is_leaf()], axis=0)
     return get_actions(config, scene, policies), policies
 
