@@ -53,7 +53,10 @@ def ucb_score(config, parent, child):
 
 #simultaneously returns an action for the player and for each enemy, based on
 #a monte carlo tree search run
-def monte_carlo_search(config, scene, predictor, cache):
+def monte_carlo_search(config, scene, predictor, cache = None):
+
+    if not cache:
+        cache = {}
 
     #initialize search by creating roots and expanding them (+ apply exploration noise)
     team1, team2 = scene.get_team_and_enemies(-1)
