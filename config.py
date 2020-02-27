@@ -1,16 +1,16 @@
 config = {
     #model latent dimensions
-    "enemy_reducer_edge_layers" : [50]*1,
-    "enemy_reducer_node_layers" : [50]*1,
-    "enemy_reducer_global_layers" : [50]*1,
+    "enemy_reducer_edge_layers" : [100]*1,
+    "enemy_reducer_node_layers" : [100]*1,
+    "enemy_reducer_global_layers" : [100]*1,
 
-    "encode_edge_layers" : [50]*1,
-    "encode_node_layers" : [50]*1,
-    "encode_global_layers" : [50]*1,
+    "encode_edge_layers" : [100]*2,
+    "encode_node_layers" : [100]*2,
+    "encode_global_layers" : [100]*2,
 
-    "core_edge_layers" : [50]*3,
-    "core_node_layers" : [50]*3,
-    "core_global_layers" : [50]*3,
+    "core_edge_layers" : [100]*2,
+    "core_node_layers" : [100]*2,
+    "core_global_layers" : [100]*2,
 
     #reinforcement
     "num_actions" : 5,
@@ -29,7 +29,6 @@ config = {
     "pb_c_init" : 4,
 
     "num_trajectories" : 24,
-
     #message passing
     "train_mp_iterations" : 5,
     "test_mp_iterations" : 5,
@@ -43,6 +42,6 @@ config = {
     "num_testing_scenes" : 50,
 
     #performance
-    "threads" : 8,
+    "threads" : 28,
     "cached_batch" : 1000 #number of mcts iterations with cached inference
 }

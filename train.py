@@ -141,7 +141,11 @@ def test(fair_scene_gen, opponent_maker, num_tests):
     @ray.remote
     class Tester(object):
         def __init__(self):
+<<<<<<< HEAD
             self.predictor = make_inference_model(fair_scene_gen)
+=======
+            self.predictor = make_inference_model(scene_gen)
+>>>>>>> bccdff2f3879097a999daac876bd66c6e6500abf
             self.predictor.load_latest()
 
         def test(self):
