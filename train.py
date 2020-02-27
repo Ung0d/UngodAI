@@ -65,6 +65,7 @@ def start(scene_gen):
                 s.load_model.remote()
 
         sampling = [sampler.sample_once.remote() for sampler in samplers]
+        num_running = len(samplers)
         num_ready = 0
         while num_ready < config["num_trajectories"]:
             ready,_ = ray.wait(sampling)
@@ -73,10 +74,15 @@ def start(scene_gen):
                     break
             running = ray.get(ready[0])
             if not running:
-                replay_buffer.add(ray.get(samplers[num].get_scene.remote()))
                 num_ready += 1
+                replay_buffer.add(ray.get(samplers[num].get_scene.remote()))
                 print(num_ready)
-            sampling[num] = samplers[num].sample_once.remote()
+                num_running -= 1
+                if num_ready < config["num_trajectories"] - num_running:
+                    sampling[num] = samplers[num].sample_once.remote()
+                    num_running += 1
+            else:
+                sampling[num] = samplers[num].sample_once.remote()
 
     sampling(load_latest)
 
@@ -92,6 +98,7 @@ def start(scene_gen):
             print("epoch ", epoch, "it ", i, " loss=", losses[-1], " av100=", sum(losses[-100:])/min(100, len(losses)), " ce=", ce, " mse=", mse)
         predictor.save()
         sampling()
+    predictor.to_tflite()
 
 
 
