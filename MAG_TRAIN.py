@@ -1,4 +1,6 @@
 import MAG
 import train
+import ray
 
-train.start(lambda : MAG.make_scene())
+ray.init()
+train.start(lambda : MAG.make_scene(), lambda : MAG.make_fair_scene())

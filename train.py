@@ -7,7 +7,6 @@ from config import config
 
 load_latest = False
 
-
 def make_inference_model(scene_gen):
     import model
     example = scene_gen()
@@ -22,10 +21,10 @@ def make_train_model(scene_gen):
 
 
 #starts the training process
-#scene gen must be a function with no arguments, that produces a fresh random scene on call
-def start(scene_gen):
-
-    ray.init()
+#scene gen has to be a function with no arguments, that produces a fresh random scene on call
+#fair scene gen has to be as scene gen but generating a fair scene with the same starting conditions for both teams
+#therefore, a win in such a scene should not depend on random initial conditions
+def start(scene_gen, fair_scene_gen):
 
     replay_buffer = tree_search.ReplayBuffer(config) #stores generated scenes
 
@@ -88,6 +87,11 @@ def start(scene_gen):
 
     predictor = make_train_model(scene_gen)
 
+    test_config = copy.deepcopy(config)
+    #disable random components and go full exploit.
+    test_config["random_moves_init"] = 0
+    test_config["root_exploration_fraction"] = 0
+
     losses = []
     for epoch in range(config["epochs"]):
         print("Start training...")
@@ -96,31 +100,55 @@ def start(scene_gen):
             loss, ce, mse = predictor.train(batch_team_inputs, batch_enemy_inputs, batch_targets)
             losses.append(loss.numpy())
             print("epoch ", epoch, "it ", i, " loss=", losses[-1], " av100=", sum(losses[-100:])/min(100, len(losses)), " ce=", ce, " mse=", mse)
-        predictor.save()
+            score = test_against_best(predictor, fair_scene_gen, config["num_testing_scenes"])
+            print("comp score: ", score)
+            if score >= 0:
+                print("new best model found and saved")
+                predictor.save()
+            else: #reset parameters to the lastest best model and sample again
+                predictor.load_latest()
         sampling()
     predictor.to_tflite()
 
-
-
-def test(scene_gen, opponent, num_tests):
-
-    ray.init()
-
+def make_test_config():
     test_config = copy.deepcopy(config)
     #disable random components and go full exploit.
     test_config["random_moves_init"] = 0
     test_config["root_exploration_fraction"] = 0
+    return test_config
+
+
+def test_against_best(cur, fair_scene_gen, num):
+    test_config = make_test_config()
+    best = make_inference_model(fair_scene_gen)
+    scores = []
+    for _ in range(num):
+        test_scene = fair_scene_gen()
+        while not test_scene.terminal():
+            actions_model, _ = tree_search.monte_carlo_search(test_config, test_scene, cur)
+            test_scene.update(actions_model)
+            actions_opp, _ = tree_search.monte_carlo_search(test_config, test_scene, best)
+            test_scene.update(actions_opp)
+        scores.append(test_scene.score())
+    return sum(scores)/len(scores)
+
+
+
+def test(fair_scene_gen, opponent_maker, num_tests):
+
+    test_config = make_test_config()
 
     @ray.remote
     class Tester(object):
         def __init__(self):
-            self.predictor = make_inference_model()
+            self.predictor = make_inference_model(fair_scene_gen)
             self.predictor.load_latest()
 
         def test(self):
             scores = []
+            opponent = opponent_maker()
             for _ in range(num_tests):
-                test_scene = scene_gen()
+                test_scene = fair_scene_gen()
                 while not test_scene.terminal():
                     actions_model, _ = tree_search.monte_carlo_search(test_config, test_scene, self.predictor)
                     test_scene.update(actions_model)
@@ -134,4 +162,6 @@ def test(scene_gen, opponent, num_tests):
     scores = []
     for score in ray.get([t.test.remote() for t in testers]):
         scores.extend(score)
-    print("testing done with average score: ", sum(scores)/len(scores))
+    margin = sum(scores)/len(scores)
+    print("testing done with average score: ", margin)
+    return margin

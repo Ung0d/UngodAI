@@ -86,6 +86,46 @@ def make_loss(targets_tr, outputs_tr):
     return ce_losses, mse_losses
 
 
+#replaces spec func from library and additionally provides the appropriate names for the graph tensors
+def specs_from_graphs_tuple(
+    graphs_tuple_sample,
+    dynamic_num_graphs=False,
+    dynamic_num_nodes=True,
+    dynamic_num_edges=True
+    ):
+  graphs_tuple_description_fields = {}
+  edge_dim_fields = [gn.graphs.EDGES, gn.graphs.SENDERS, gn.graphs.RECEIVERS]
+
+  for field_name in gn.graphs.ALL_FIELDS:
+    field_sample = getattr(graphs_tuple_sample, field_name)
+    if field_sample is None:
+      raise ValueError(
+          "The `GraphsTuple` field `{}` was `None`. All fields of the "
+          "`GraphsTuple` must be specified to create valid signatures that"
+          "work with `tf.function`. This can be achieved with `input_graph = "
+          "utils_tf.set_zero_{{node,edge,global}}_features(input_graph, 0)`"
+          "to replace None's by empty features in your graph. Alternatively"
+          "`None`s can be replaced by empty lists by doing `input_graph = "
+          "input_graph.replace({{nodes,edges,globals}}=[]). To ensure "
+          "correct execution of the program, it is recommended to restore "
+          "the None's once inside of the `tf.function` by doing "
+          "`input_graph = input_graph.replace({{nodes,edges,globals}}=None)"
+          "".format(field_name))
+
+    shape = list(field_sample.shape)
+    dtype = field_sample.dtype
+
+    if (shape and (
+        dynamic_num_graphs or
+        (dynamic_num_nodes and field_name == gn.graphs.NODES) or
+        (dynamic_num_edges and field_name in edge_dim_fields))):
+      shape[0] = None
+
+    graphs_tuple_description_fields[field_name] = tf.TensorSpec(
+        shape=shape, dtype=dtype, name=field_name)
+
+  return gn.graphs.GraphsTuple(**graphs_tuple_description_fields)
+
 
 class InferenceModel():
 
@@ -97,16 +137,16 @@ class InferenceModel():
         self.checkpoint_name = "example"
         self.save_prefix = os.path.join(self.checkpoint_root, self.checkpoint_name)
 
-        def inference(team_inputs_tr, enemy_inputs_tr):
-            return self.model(team_inputs_tr, enemy_inputs_tr, config["test_mp_iterations"])
-
         team_input_example = get_inputs([team_input_example])
         enemy_input_example = get_inputs([enemy_input_example])
 
+        def inference(team_inputs_tr, enemy_inputs_tr):
+            return self.model(team_inputs_tr, enemy_inputs_tr, config["test_mp_iterations"])
+
         # Get the input signature for that function by obtaining the specs
         self.input_signature = [
-          gn.utils_tf.specs_from_graphs_tuple(team_input_example, dynamic_num_graphs=True),
-          gn.utils_tf.specs_from_graphs_tuple(enemy_input_example, dynamic_num_graphs=True)
+          specs_from_graphs_tuple(team_input_example, dynamic_num_graphs=True),
+          specs_from_graphs_tuple(enemy_input_example, dynamic_num_graphs=True)
         ]
 
         # Compile the update function using the input signature for speedy code.

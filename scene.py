@@ -180,7 +180,7 @@ class Scene(abc.ABC):
             print("enemy ", j, ":", actor.get_state())
 
     #renders an animation displaying the whole trajectory
-    def draw_trajectory(self, secs_per_frame = 0.2):
+    def draw_trajectory(self, secs_per_frame = 1):
         fig = plt.gcf()
         ax = plt.axes()
         fig.show()
