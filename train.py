@@ -5,7 +5,7 @@ import copy
 import tree_search
 from config import config
 
-load_latest = False
+load_latest = True
 
 def make_inference_model(scene_gen):
     import model
@@ -26,7 +26,7 @@ def make_train_model(scene_gen):
 #therefore, a win in such a scene should not depend on random initial conditions
 def start(scene_gen, fair_scene_gen):
 
-    replay_buffer = tree_search.ReplayBuffer(config) #stores generated scenes
+    replay_buffer = tree_search.ReplayBuffer(config, load_latest) #stores generated scenes
 
     @ray.remote
     class Sampler(object):
@@ -100,13 +100,15 @@ def start(scene_gen, fair_scene_gen):
             loss, ce, mse = predictor.train(batch_team_inputs, batch_enemy_inputs, batch_targets)
             losses.append(loss.numpy())
             print("epoch ", epoch, "it ", i, " loss=", losses[-1], " av100=", sum(losses[-100:])/min(100, len(losses)), " ce=", ce, " mse=", mse)
-            score = test_against_best(predictor, fair_scene_gen, config["num_testing_scenes"])
-            print("comp score: ", score)
-            if score >= 0:
-                print("new best model found and saved")
-                predictor.save()
-            else: #reset parameters to the lastest best model and sample again
-                predictor.load_latest()
+            # below code is not multithreaded and thus very slow, TODO
+            # score = test_against_best(predictor, fair_scene_gen, config["num_testing_scenes"])
+            # print("comp score: ", score)
+            # if score >= 0:
+            #     print("new best model found and saved")
+            #     predictor.save()
+            # else: #reset parameters to the lastest best model and sample again
+            #     predictor.load_latest()
+        predictor.save()
         sampling()
     predictor.to_tflite()
 
@@ -141,11 +143,7 @@ def test(fair_scene_gen, opponent_maker, num_tests):
     @ray.remote
     class Tester(object):
         def __init__(self):
-<<<<<<< HEAD
             self.predictor = make_inference_model(fair_scene_gen)
-=======
-            self.predictor = make_inference_model(scene_gen)
->>>>>>> bccdff2f3879097a999daac876bd66c6e6500abf
             self.predictor.load_latest()
 
         def test(self):

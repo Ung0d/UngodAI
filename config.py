@@ -18,7 +18,7 @@ config = {
     "max_trajectory_length" : 1000,
     "buffer_size" : 10000,
 
-    "tree_simulations" : 1,
+    "tree_simulations" : 400,
 
     "random_moves_init" : 20,
 
@@ -28,20 +28,20 @@ config = {
     "pb_c_base" : 19652,
     "pb_c_init" : 4,
 
-    "num_trajectories" : 24,
+
+    "num_trajectories" : 100,
     #message passing
-    "train_mp_iterations" : 5,
-    "test_mp_iterations" : 5,
+    "train_mp_iterations" : 10,
+    "test_mp_iterations" : 10,
 
     #training
     "learning_rate" : 1e-3,
     "batch_size" : 4000,
-    "epochs" : 1,
-    "train_iterations" : 5,
+    "epochs" : 1000,
+    "train_iterations" : 40,
     "l2_regularization" : 1e-4,
-    "num_testing_scenes" : 50,
 
     #performance
-    "threads" : 28,
+    "threads" : 4,
     "cached_batch" : 1000 #number of mcts iterations with cached inference
 }
