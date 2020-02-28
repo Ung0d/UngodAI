@@ -100,14 +100,14 @@ def start(scene_gen, fair_scene_gen):
             loss, ce, mse = predictor.train(batch_team_inputs, batch_enemy_inputs, batch_targets)
             losses.append(loss.numpy())
             print("epoch ", epoch, "it ", i, " loss=", losses[-1], " av100=", sum(losses[-100:])/min(100, len(losses)), " ce=", ce, " mse=", mse)
-            # below code is not multithreaded and thus very slow, TODO
-            # score = test_against_best(predictor, fair_scene_gen, config["num_testing_scenes"])
-            # print("comp score: ", score)
-            # if score >= 0:
-            #     print("new best model found and saved")
-            #     predictor.save()
-            # else: #reset parameters to the lastest best model and sample again
-            #     predictor.load_latest()
+        # below code is not multithreaded and thus very slow, TODO
+        # score = test_against_best(predictor, fair_scene_gen, config["num_testing_scenes"])
+        # print("comp score: ", score)
+        # if score >= 0:
+        #     print("new best model found and saved")
+        #     predictor.save()
+        # else: #reset parameters to the lastest best model and sample again
+        #     predictor.load_latest()
         predictor.save()
         sampling()
     predictor.to_tflite()

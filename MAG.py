@@ -66,6 +66,7 @@ class MAGActor(scene.Actor):
                 self.on_goal = True
                 if actor_scene.additional_data[i,2] == 1: #first time visit
                     self.score = 1
+                    self.is_alive = False
                     actor_scene.additional_data[i,2] = 0
                 break
 
@@ -94,9 +95,8 @@ class MAGActor(scene.Actor):
 goals = np.array([[2,2,1], [4,1,1]])
 
 def make_scene():
-    num_actors = np.random.randint(num_actor_per_team) 
-    return scene.Scene(graph_edge_min_dist, map_x, map_y, num_actors,
-                                    [[MAGActor(np.random.randint(map_x), np.random.randint(map_y)) for _ in range(2*num_actors)]],
+    return scene.Scene(graph_edge_min_dist, map_x, map_y, num_actor_per_team,
+                                    [[MAGActor(np.random.randint(map_x), np.random.randint(map_y)) for _ in range(2*num_actor_per_team)]],
                                     copy.deepcopy(goals))
 
 #both teams start at the exact same positions
