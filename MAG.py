@@ -94,8 +94,9 @@ class MAGActor(scene.Actor):
 goals = np.array([[2,2,1], [4,1,1]])
 
 def make_scene():
-    return scene.Scene(graph_edge_min_dist, map_x, map_y, num_actor_per_team,
-                                    [[MAGActor(np.random.randint(map_x), np.random.randint(map_y)) for _ in range(2*num_actor_per_team)]],
+    num_actors = np.random.randint(num_actor_per_team) 
+    return scene.Scene(graph_edge_min_dist, map_x, map_y, num_actors,
+                                    [[MAGActor(np.random.randint(map_x), np.random.randint(map_y)) for _ in range(2*num_actors)]],
                                     copy.deepcopy(goals))
 
 #both teams start at the exact same positions

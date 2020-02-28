@@ -62,9 +62,9 @@ def monte_carlo_search(config, scene, predictor, cache = None):
     team1, team2 = scene.get_team_and_enemies(-1)
     roots1 = [Node() for actor in team1]
     roots2 = [Node() for actor in team2]
-    if scene.get_trajectory_length() > 0:
-        scene.print_info(-1)
-    print(evaluate_and_expand(config, scene, roots1, predictor, cache, apply_noise=True))
+    # if scene.get_trajectory_length() > 0:
+    #     scene.print_info(-1)
+    evaluate_and_expand(config, scene, roots1, predictor, cache, apply_noise=True)
     #iteratively and simultaneously construct search trees for team and enemies
     for i in range(config["tree_simulations"]):
         scene_local = scene.clone()
